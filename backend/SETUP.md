@@ -113,14 +113,40 @@ AWS_RDS_SSL_MODE=require
 
 ## 5. Run Database Migrations
 
-The schema is managed via Supabase migrations. If using Supabase, the tables are created automatically through the migration tool. For local/Azure/AWS PostgreSQL, apply the schema manually:
+The schema is managed via Alembic migrations. Run migrations to create tables:
 
 ```bash
-# Using psql with the sync connection string:
-psql "<DATABASE_URL_SYNC>" < migrations/schema.sql
+alembic upgrade head
 ```
 
-Or use Alembic (if configured):
+This creates all required tables:
+- **Auth**: `users`, `refresh_tokens`, `password_reset_tokens`
+- **Content**: `articles`, `categories`, `tags`, `article_tags`
+- **Media**: `media`
+- **Engagement**: `newsletter_subscribers`, `article_views`
+- **Intelligence**: `ai_conversations`, `ai_messages`
+- **Administration**: `settings`, `activity_log`
+
+Seed data (4 users, 4 categories, 12 tags, 5 settings) is included in migration `002`.
+
+### Migration Commands
+
+```bash
+# Apply all migrations
+alembic upgrade head
+
+# Rollback last migration
+alembic downgrade -1
+
+# Rollback all migrations
+alembic downgrade base
+
+# View migration history
+alembic history
+
+# Create a new migration (after model changes)
+alembic revision --autogenerate -m "description of change"
+```
 
 ```bash
 alembic upgrade head
@@ -163,13 +189,16 @@ Expected response:
 
 ## 8. Seed Data
 
-The initial migration seeds:
+The seed migration (`002_seed_data`) creates:
 
-- **1 Super Admin**: `admin@pyflow.dev` (password: `changeme`)
-- **3 Authors**: Alex Chen, Sarah Kim, Marcus Webb
-- **4 Categories**: AI Engineering, Python, Automation, MLOps
-- **12 Tags**: Python, LangChain, FastAPI, ML, Automation, RAG, Docker, Pydantic, OpenAI, Async Python, SQLAlchemy, TypeScript
-- **Default settings** for all blog configuration sections
+- **4 Users** (all with password `password123`):
+  - `superadmin@pyflow.dev` (Super Admin)
+  - `admin@pyflow.dev` (Admin)
+  - `editor@pyflow.dev` (Editor)
+  - `author@pyflow.dev` (Author)
+- **4 Categories**: Technology, Design, Business, Lifestyle
+- **12 Tags**: Python, JavaScript, FastAPI, React, PostgreSQL, Docker, AWS, CSS, TypeScript, Node.js, Git, AI
+- **5 Settings**: site_name, site_description, posts_per_page, enable_newsletter, enable_ai_chat
 
 ---
 
@@ -228,6 +257,11 @@ This starts the API on port 3001 and Redis on port 6379. Uncomment the `db` serv
 
 ```
 backend/
+  alembic/                   # Database migrations
+    versions/               # Migration files (001_initial_schema, 002_seed_data)
+    env.py                  # Alembic environment config
+    script.py.mako          # Migration template
+  alembic.ini                # Alembic configuration
   app/
     main.py                  # FastAPI app factory
     config.py                # Settings (env vars, DB mode switching)
